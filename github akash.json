@@ -1,0 +1,172 @@
+{
+  "name": "github akash",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "256043fc-6f83-42d0-97e3-d210074cfd26",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Date: {{ $now.format('YYYY-MM-DD') }}\nDay N = days since 2025-01-01.\n\nWrite Day N's full learning note with:\n- Overview\n- 3 core concepts with analogies\n- 3 full Python programs (20+ lines each, with comments)\n- 2 common mistakes (wrong vs correct code)\n- 4 practice problems (easy to challenge)\n- Quick reference table\n- Checklist and what's next",
+        "options": {
+          "systemMessage": "You are a Python & Data Science daily note generator.\n\nCurriculum by day number (count from 2025-01-01):\nDay 1–10: Python basics\nDay 11–25: Python intermediate (OOP, decorators, comprehensions)\nDay 26–40: NumPy & Pandas\nDay 41–55: Matplotlib & Seaborn\nDay 56–70: Statistics & probability\nDay 71–90: ML basics (scikit-learn)\nDay 91–110: ML intermediate (pipelines, XGBoost)\nDay 111–130: Feature engineering & EDA\nDay 131–150: Unsupervised learning\nDay 151+: Deep learning, NLP, Flask deployment\n\nRules:\n- Output raw Markdown only, nothing before # heading\n- Minimum 200 lines\n- All code must be real runnable Python"
+        }
+      },
+      "id": "9aaf8405-15dd-4ec2-921d-777154608823",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        496,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "temperature": 1
+        }
+      },
+      "id": "03ab7c3c-4ca7-4eea-a033-19e70464c09b",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        496,
+        416
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "KiZW179rX2AWXs1v",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $json.output;\n\nconst now = new Date();\nconst year  = now.getFullYear();\nconst month = String(now.getMonth() + 1).padStart(2, '0');\nconst day   = String(now.getDate()).padStart(2, '0');\nconst dateStr = `${year}${month}${day}`;\nconst idx = Math.floor(Math.random() * 900) + 100;\n\nconst fileContent = `Dev Note - ${now.toISOString()}\\n${'='.repeat(40)}\\n\\n${output}\\n`;\n\nreturn [{\n  json: {\n    filename:     `notes/note_${dateStr}_${idx}.txt`,\n    content:      Buffer.from(fileContent).toString('base64'),\n    message:      `📝 dev note [${now.toDateString()}]`,\n    author_name:  \"Akash\",\n    author_email: \"beastboy21718@gmail.com\"\n  }\n}];"
+      },
+      "id": "e77e0dc2-e706-4d49-b3c4-3f77df055251",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/techakash32/dev-notes/contents/{{ $json.filename }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $json.message }}\",\n  \"content\": \"{{ $json.content }}\",\n  \"branch\": \"main\",\n  \"author\": {\n    \"name\": \"{{ $json.author_name }}\",\n    \"email\": \"{{ $json.author_email }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "76aa4cb6-9523-46b9-95ea-4d8399a13ef5",
+      "name": "Upload to GitHub (with author)1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        976,
+        208
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "VtqJa96xh1IYLPlI",
+          "name": "Header Auth account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Upload to GitHub (with author)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "56b9aac1-203e-474b-ba50-339c5cd6efb3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cc3bc7ffb3bb34219b7170fd32df2da2fa6a23ccfe32dc38b8011f9ccf0a5a8c"
+  },
+  "id": "OiwdZ3w7S14GNoys",
+  "tags": []
+}

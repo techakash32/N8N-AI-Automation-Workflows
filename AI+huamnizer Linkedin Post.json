@@ -1,0 +1,463 @@
+{
+  "name": "AI+huamnizer Linkedin Post",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2576,
+        3920
+      ],
+      "id": "f92e7290-6e4c-430f-a044-c957eef074a3",
+      "name": "Telegram Trigger1",
+      "webhookId": "f77e852e-a7ac-4515-8288-c3f4b80b1a30",
+      "credentials": {
+        "telegramApi": {
+          "id": "OUOyqXcSHViSzmaS",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"meta/llama3-70b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a LinkedIn content expert. Write viral, engaging posts. First person. Short paragraphs. 3-5 emojis. End with question + 5 hashtags. No asterisks. Keep lines short.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Create a LinkedIn post for: {{ $json.message.text }}\\n\\nUse the exact topic from the request. Write 300-400 words. Strong hook. Conversational tone. End with 'What's your take?' + 5 hashtags.\"\n    }\n  ],\n  \"temperature\": 0.8,\n  \"max_tokens\": 800\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2352,
+        3920
+      ],
+      "id": "016cbdda-5cc3-4566-9c30-e804e9406ed9",
+      "name": "NVIDIA — Generate Post"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "45335d38-15b8-48f0-9fbf-a088c41903e3",
+              "name": "content",
+              "value": "={{ $json.choices[0].message.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2128,
+        3920
+      ],
+      "id": "01dab589-6d44-401b-bcbf-a9b97fe1c745",
+      "name": "Set Post Content"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"meta/llama3-70b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a LinkedIn editor. Make posts more human and conversational. Remove AI-sounding phrases. Return ONLY improved post. No explanations.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Humanize this LinkedIn post: {{ JSON.stringify($json.content).slice(1, -1) }}\"\n    }\n  ],\n  \"temperature\": 0.5,\n  \"max_tokens\": 800\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1904,
+        3920
+      ],
+      "id": "4f5f6198-7489-4daa-baab-5a5c397630c4",
+      "name": "NVIDIA — Humanize & Improve Post"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get content from the NVIDIA response\nconst content = $json.choices[0].message.content;\n\nif (!content) {\n  return [{ json: { escapedContent: \"No content provided\" } }];\n}\n\n// Remove asterisks and clean up\nconst cleaned = content.replace(/\\*\\*/g, '').replace(/\\*/g, '');\n\n// Escape special characters for JSON (if needed later)\nconst escaped = cleaned\n  .replace(/\\\\/g, '\\\\\\\\')\n  .replace(/\"/g, '\\\\\"')\n  .replace(/\\n/g, '\\\\n')\n  .replace(/\\r/g, '\\\\r')\n  .replace(/\\t/g, '\\\\t');\n\nreturn [{ json: { output: cleaned, post: cleaned, escapedContent: escaped } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1680,
+        3920
+      ],
+      "id": "017ee76e-d683-4b5c-9451-10f50422a714",
+      "name": "Clean Post Output"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "chatId": "={{ $('Telegram Trigger1').item.json.message.chat.id }}",
+        "message": "=📝 **{{ $('NVIDIA — Generate Post').item.json.choices[0].message.content }}**\n\n---\n{{ $json.output }}\n---\n\n✅ Reply **accept** to post to LinkedIn\n❌ Reply **decline** to cancel\n✏️ Or send feedback to revise",
+        "responseType": "customForm",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "accept"
+                  },
+                  {
+                    "option": "decline"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Feedback",
+              "fieldType": "textarea",
+              "placeholder": "Write your feedback for revision"
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1456,
+        3920
+      ],
+      "id": "fc237700-2f78-496e-8ff2-839f323a5468",
+      "name": "Send for Approval",
+      "webhookId": "583757ca-f801-4d01-bda5-bb40af1af6d4",
+      "credentials": {
+        "telegramApi": {
+          "id": "OUOyqXcSHViSzmaS",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "id": "check-accept",
+              "leftValue": "={{ $json.data.Decision }}",
+              "rightValue": "accept",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1232,
+        3920
+      ],
+      "id": "8cb71a48-1f31-430e-abb2-c82d05fe9532",
+      "name": "Check Decision"
+    },
+    {
+      "parameters": {
+        "url": "https://api.linkedin.com/v2/userinfo",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1008,
+        3840
+      ],
+      "id": "58117eb4-5a07-4d09-9627-6cc67f03b297",
+      "name": "Get LinkedIn User ID",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "FDFBvU8ewBKanXxm",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"author\": \"urn:li:person:{{ $('Get LinkedIn User ID').item.json.sub }}\",\n  \"lifecycleState\": \"PUBLISHED\",\n  \"specificContent\": {\n    \"com.linkedin.ugc.ShareContent\": {\n      \"shareCommentary\": {\n        \"text\": {{ JSON.stringify($('Clean Post Output').item.json.output) }}\n      },\n      \"shareMediaCategory\": \"NONE\"\n    }\n  },\n  \"visibility\": {\n    \"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -784,
+        3840
+      ],
+      "id": "010eeeb3-f1c1-45d0-b13b-67374a925999",
+      "name": "Post to LinkedIn",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "FDFBvU8ewBKanXxm",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger1').item.json.message.chat.id }}",
+        "text": "🎉 **Successfully posted to LinkedIn!**\n\nYour post is now live.\n\nView it here: https://www.linkedin.com/feed/update/{{ $json.id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        3840
+      ],
+      "id": "21de62ef-54d2-41cc-a54e-b9a240553126",
+      "name": "Confirm Success",
+      "webhookId": "76c61644-59b1-4854-89a6-ad95b4192551",
+      "credentials": {
+        "telegramApi": {
+          "id": "OUOyqXcSHViSzmaS",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"meta/llama3-70b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a LinkedIn editor. Revise posts based on user feedback. Apply the feedback intelligently. Return ONLY the revised post. No explanations.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Original post: {{ $('Clean Post Output').item.json.output }}\\n\\nUser feedback: {{ $json.data.Feedback }}\\n\\nRevise the post based on this feedback. Keep the same topic and tone.\"\n    }\n  ],\n  \"temperature\": 0.5,\n  \"max_tokens\": 800\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1008,
+        4016
+      ],
+      "id": "49ceccb9-9d55-452b-8adb-7c697d7cbe08",
+      "name": "Revise with Feedback"
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.choices[0].message.content;\nconst cleaned = content.replace(/\\*\\*/g, '').replace(/\\*/g, '');\nreturn [{ json: { output: cleaned, post: cleaned } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        4016
+      ],
+      "id": "4e83c8ca-3759-4951-9bb8-af50a5578e8e",
+      "name": "Clean Revision"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger1": {
+      "main": [
+        [
+          {
+            "node": "NVIDIA — Generate Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NVIDIA — Generate Post": {
+      "main": [
+        [
+          {
+            "node": "Set Post Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Post Content": {
+      "main": [
+        [
+          {
+            "node": "NVIDIA — Humanize & Improve Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NVIDIA — Humanize & Improve Post": {
+      "main": [
+        [
+          {
+            "node": "Clean Post Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Post Output": {
+      "main": [
+        [
+          {
+            "node": "Send for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send for Approval": {
+      "main": [
+        [
+          {
+            "node": "Check Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Decision": {
+      "main": [
+        [
+          {
+            "node": "Get LinkedIn User ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Revise with Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get LinkedIn User ID": {
+      "main": [
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Confirm Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revise with Feedback": {
+      "main": [
+        [
+          {
+            "node": "Clean Revision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Revision": {
+      "main": [
+        [
+          {
+            "node": "Clean Post Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a8023445-ce36-4b19-a2dd-47f913565275",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cc3bc7ffb3bb34219b7170fd32df2da2fa6a23ccfe32dc38b8011f9ccf0a5a8c"
+  },
+  "id": "crd3kWSa0B7umtov",
+  "tags": []
+}

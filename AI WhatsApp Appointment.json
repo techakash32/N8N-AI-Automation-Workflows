@@ -1,0 +1,163 @@
+{
+  "name": "AI WhatsApp Appointment",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Customer name: {{ $('WhatsApp Trigger').first().json.contacts[0].profile.name }}\nCustomer message: {{ $('WhatsApp Trigger').first().json.messages[0].text.body }}",
+        "options": {
+          "systemMessage": "You are an AI WhatsApp appointment setter for a business. Keep all messages short (under 160 characters), conversational, and friendly.\n\nYour goal is to qualify leads and book appointments by following these steps:\n1. Greet the customer by name if available.\n2. Ask what service they are interested in.\n3. Ask about their preferred date and time.\n4. Once they confirm, send the booking link: https://calendly.com/beastboy21718/30min\n\nRules:\n- Reply in plain text only, no markdown or special formatting.\n- Never ask more than one question at a time.\n- Be warm but concise — this is WhatsApp, not email.\n- If the customer seems uninterested, politely close the conversation."
+        }
+      },
+      "id": "f64d04a9-4da0-442c-bc3c-fd9fafbd1013",
+      "name": "AI SMS Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -928,
+        3056
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "id": "d5a877c3-c794-4bf3-969b-aeba1838d977",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        3296
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "KiZW179rX2AWXs1v",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger').first().json.contacts[0].wa_id }}",
+        "contextWindowLength": 10
+      },
+      "id": "93b05252-f526-453b-b312-284d98594c06",
+      "name": "Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -832,
+        3280
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1152,
+        3056
+      ],
+      "id": "ae62995c-439d-4fe2-acf6-3e375ab19c69",
+      "name": "WhatsApp Trigger",
+      "webhookId": "d5d81e37-17a0-4d05-a9f6-0f873435d9af",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "R0u4pnXjAyAL5oZF",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1060550820473738",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').first().json.messages[0].from }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        3056
+      ],
+      "id": "2a37a77f-7e43-4bba-9e68-0b9970a8278b",
+      "name": "Send message",
+      "webhookId": "086950d4-45ec-439e-a695-cf0c98f05335",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "fVxd8gzMvRv5Q0DC",
+          "name": "WhatsApp account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI SMS Agent": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI SMS Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI SMS Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI SMS Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6e79a06f-6613-4829-9a6f-6b6d8c4c2f0d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cc3bc7ffb3bb34219b7170fd32df2da2fa6a23ccfe32dc38b8011f9ccf0a5a8c"
+  },
+  "id": "UHTN9N8x2LEXLi3P",
+  "tags": []
+}

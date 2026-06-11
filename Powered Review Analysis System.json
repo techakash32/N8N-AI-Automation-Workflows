@@ -1,0 +1,384 @@
+{
+  "name": "Powered Review Analysis System (MySQL)",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Product Review Submission",
+        "formDescription": "Submit a product review for AI-powered sentiment analysis and business insights",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Product Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Review Text",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Star Rating (1-5)",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reviewer Name"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e7074b32-7733-4c51-87a6-cbeaba39c79d",
+      "name": "📝 On Form Submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        1536,
+        1152
+      ],
+      "webhookId": "ee264947-f371-4ac0-aae6-1efb2761af32"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize incoming form submission into standard review format\nconst item = $input.first().json;\nreturn [{\n  json: {\n    source: 'form_submission',\n    product_name: String(item['Product Name'] || 'Unknown Product').trim(),\n    review_text: String(item['Review Text'] || '').trim(),\n    rating: Math.min(5, Math.max(1, parseFloat(item['Star Rating (1-5)']) || 3)),\n    reviewer_name: String(item['Reviewer Name'] || 'Anonymous').trim(),\n    review_date: new Date().toISOString().split('T')[0],\n    review_id: 'FORM-' + Date.now()\n  }\n}];"
+      },
+      "id": "325b0104-843d-414a-a77b-115333352098",
+      "name": "🔄 Normalize Form Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        1152
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "4adbc513-d2fa-4872-8a59-34b86e6c3562",
+      "name": "▶️ Manual Test Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 5 diverse sample product reviews for testing the full pipeline\nconst reviews = [\n  {\n    source: 'manual_test',\n    product_name: 'Wireless Noise-Cancelling Headphones Pro X1',\n    review_text: 'Absolutely love these headphones! The noise cancellation is incredible — I can focus completely in busy coffee shops. Battery life is impressive at 30+ hours. The only minor issue is they get a bit warm after 2+ hours of continuous wear. Overall a fantastic product that has genuinely improved my daily work life.',\n    rating: 4.5,\n    reviewer_name: 'TechEnthusiast_Mike',\n    review_date: '2026-04-01',\n    review_id: 'SAMPLE-001'\n  },\n  {\n    source: 'manual_test',\n    product_name: 'SmartFit Fitness Tracker Band v2',\n    review_text: 'Very disappointed with this product. The heart rate monitor is completely inaccurate — shows 150bpm when I am just sitting at my desk. The strap broke after only 2 weeks of normal use. I contacted customer service three times and they refused to honor the warranty. Complete waste of money. Do not buy.',\n    rating: 1,\n    reviewer_name: 'FitnessFanatic_Sarah',\n    review_date: '2026-04-02',\n    review_id: 'SAMPLE-002'\n  },\n  {\n    source: 'manual_test',\n    product_name: 'ErgoMax Office Chair Pro',\n    review_text: 'Decent chair for the price. Assembly took about 45 minutes. The lumbar support is adjustable which is great for long sessions. However, the armrests feel cheap and wobble noticeably. The seat cushion loses padding after a few months. Would recommend for occasional home use but not for full-time office work.',\n    rating: 3,\n    reviewer_name: 'HomeOfficePro_Alex',\n    review_date: '2026-04-03',\n    review_id: 'SAMPLE-003'\n  },\n  {\n    source: 'manual_test',\n    product_name: 'BrewMaster Portable Espresso Maker',\n    review_text: 'An absolute game changer for travel! Makes genuinely excellent espresso anywhere — hotel rooms, camping, even the office. Easy to clean and compact enough for my backpack. Had it 8 months with zero issues. My colleagues are constantly jealous during morning meetings. 10 out of 10 would recommend to any serious coffee lover.',\n    rating: 5,\n    reviewer_name: 'CoffeeLover_Emma',\n    review_date: '2026-04-04',\n    review_id: 'SAMPLE-004'\n  },\n  {\n    source: 'manual_test',\n    product_name: 'RoboClean X500 Robot Vacuum',\n    review_text: 'Mixed feelings. The suction power is great and handles pet hair really well. The mapping is accurate and it never gets stuck. However the app disconnects from WiFi every few days and the scheduling feature fails to trigger about 30% of the time. Support acknowledged a known firmware issue but the fix has not arrived in 3 months.',\n    rating: 3.5,\n    reviewer_name: 'SmartHome_Dave',\n    review_date: '2026-04-05',\n    review_id: 'SAMPLE-005'\n  }\n];\nreturn reviews.map(r => ({ json: r }));"
+      },
+      "id": "922a59e5-a9c4-45d2-84a2-0a6de9c0bf99",
+      "name": "📋 Load Sample Reviews",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "b5b78438-6d29-4d8c-8d48-527e29009997",
+      "name": "⏰ Daily Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1536,
+        1536
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mock database fetch – replace with real HTTP or DB node\nconst today = new Date().toISOString().split('T')[0];\nconst reviews = [\n  {\n    source: 'scheduled_db_fetch',\n    product_name: 'UltraSound Bluetooth Speaker 360',\n    review_text: 'Outstanding sound quality for its compact size. The 360-degree audio fills any room. The waterproof design genuinely works — survived a pool party. Battery easily lasts 20 hours. I have recommended this to 4 friends already and all of them love it too.',\n    rating: 5,\n    reviewer_name: 'AudioPhile_James',\n    review_date: today,\n    review_id: 'DB-' + Date.now() + '-001'\n  },\n  {\n    source: 'scheduled_db_fetch',\n    product_name: 'RiseUp Standing Desk Converter',\n    review_text: 'The desk itself works well and the height adjustment range is good. But delivery took 3 weeks instead of the promised 3-5 days with zero communication. Packaging was visibly damaged on arrival and one piece had a visible scratch. Product quality is fine but the fulfillment process is a serious problem.',\n    rating: 2.5,\n    reviewer_name: 'ProductivityGuru_Sam',\n    review_date: today,\n    review_id: 'DB-' + Date.now() + '-002'\n  }\n];\nreturn reviews.map(r => ({ json: r }));"
+      },
+      "id": "1dddf3f9-877f-436a-98b1-5b53e17ee6f6",
+      "name": "🗄️ Fetch Latest Reviews",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        1536
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate and sanitize all incoming reviews before sending to AI\nconst items = $input.all();\nif (!items || items.length === 0) {\n  throw new Error('No reviews received for processing. Check trigger configuration.');\n}\n\nconst validated = [];\nconst skipped = [];\n\nfor (const item of items) {\n  const r = item.json;\n  if (!r.review_text || r.review_text.trim().length < 15) {\n    skipped.push({ id: r.review_id || 'unknown', reason: 'Review text missing or too short (< 15 chars)' });\n    continue;\n  }\n  if (!r.product_name || r.product_name.trim().length < 2) {\n    skipped.push({ id: r.review_id || 'unknown', reason: 'Product name missing' });\n    continue;\n  }\n  validated.push({\n    json: {\n      source: r.source || 'unknown',\n      product_name: r.product_name.trim().substring(0, 200),\n      review_text: r.review_text.trim().substring(0, 3000),\n      rating: Math.min(5, Math.max(1, parseFloat(r.rating) || 3)),\n      reviewer_name: (r.reviewer_name || 'Anonymous').trim().substring(0, 100),\n      review_date: r.review_date || new Date().toISOString().split('T')[0],\n      review_id: r.review_id || ('GEN-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8).toUpperCase()),\n      ingested_at: new Date().toISOString()\n    }\n  });\n}\n\nif (skipped.length > 0) console.warn('[Validation] Skipped:', JSON.stringify(skipped));\nif (validated.length === 0) throw new Error('All reviews failed validation: ' + JSON.stringify(skipped));\n\nconsole.log(`[Validation] ✅ ${validated.length} valid | ⏭️ ${skipped.length} skipped`);\nreturn validated;"
+      },
+      "id": "87ee7e2a-2dc2-4198-9371-45a5cf795072",
+      "name": "✅ Validate & Sanitize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"meta/llama3-70b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an expert product review analyst with deep expertise in customer sentiment analysis, product quality assessment, and customer service strategy.\\n\\nAnalyze the product review provided and respond ONLY with a valid JSON object. No markdown, no code blocks, no preamble — just the raw JSON object.\\n\\nThe response JSON must contain exactly these fields:\\n{\\n  \\\"sentiment\\\": \\\"positive\\\" | \\\"negative\\\" | \\\"neutral\\\",\\n  \\\"sentiment_score\\\": <integer 0-10>,\\n  \\\"confidence\\\": <integer 0-100>,\\n  \\\"key_topics\\\": [<array of up to 5 specific topics>],\\n  \\\"main_praise\\\": \\\"<string or null>\\\",\\n  \\\"main_issue\\\": \\\"<string or null>\\\",\\n  \\\"summary\\\": \\\"<1-2 sentence summary>\\\",\\n  \\\"priority\\\": \\\"high\\\" | \\\"medium\\\" | \\\"low\\\",\\n  \\\"priority_reason\\\": \\\"<one sentence>\\\",\\n  \\\"suggested_response\\\": \\\"<2-3 sentence response>\\\",\\n  \\\"product_insight\\\": \\\"<actionable insight>\\\",\\n  \\\"tags\\\": [<array of tags from: warranty, shipping, durability, performance, value, customer_service, design, ease_of_use, battery, connectivity, software>]\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Analyze this product review:\\n\\nProduct: {{ $json.product_name }}\\nRating: {{ $json.rating }}/5 stars\\nReviewer: {{ $json.reviewer_name }}\\nDate: {{ $json.review_date }}\\n\\nReview:\\n{{ $json.review_text }}\"\n    }\n  ],\n  \"temperature\": 0.5,\n  \"max_tokens\": 1200\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 1500
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "3394b43f-7c18-4462-be85-4d35c3d37681",
+      "name": "🤖 NVIDIA AI Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2208,
+        1344
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse NVIDIA's response (OpenAI-compatible format) and merge with original review\nconst apiResponse = $input.first().json;\nlet originalReview;\ntry {\n  originalReview = $('✅ Validate & Sanitize').item.json;\n} catch (e) {\n  originalReview = {};\n}\n\ntry {\n  if (apiResponse.error) {\n    throw new Error(`API Error: ${apiResponse.error.message || JSON.stringify(apiResponse.error)}`);\n  }\n  const content = apiResponse.choices?.[0]?.message?.content;\n  if (!content) throw new Error('No content in API response');\n\n  let rawText = content.trim();\n  rawText = rawText.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/i, '').trim();\n  const analysis = JSON.parse(rawText);\n\n  if (!analysis.sentiment) throw new Error('Missing required field: sentiment');\n\n  return [{\n    json: {\n      review_id: originalReview.review_id || 'UNKNOWN',\n      source: originalReview.source || 'unknown',\n      product_name: originalReview.product_name || 'Unknown Product',\n      rating: originalReview.rating || 3,\n      reviewer_name: originalReview.reviewer_name || 'Anonymous',\n      review_date: originalReview.review_date || '',\n      review_text: originalReview.review_text || '',\n      ingested_at: originalReview.ingested_at || '',\n      sentiment: analysis.sentiment,\n      sentiment_score: Number(analysis.sentiment_score) || 5,\n      confidence: Number(analysis.confidence) || 70,\n      key_topics: Array.isArray(analysis.key_topics) ? analysis.key_topics.join(' | ') : String(analysis.key_topics || ''),\n      main_praise: analysis.main_praise || null,\n      main_issue: analysis.main_issue || null,\n      ai_summary: analysis.summary || '',\n      priority: analysis.priority || 'medium',\n      priority_reason: analysis.priority_reason || '',\n      suggested_response: analysis.suggested_response || '',\n      product_insight: analysis.product_insight || '',\n      tags: Array.isArray(analysis.tags) ? analysis.tags.join(' | ') : String(analysis.tags || ''),\n      analysis_status: 'success',\n      analyzed_at: new Date().toISOString(),\n      model_used: apiResponse.model || 'llama3-70b-instruct',\n      input_tokens: apiResponse.usage?.prompt_tokens || 0,\n      output_tokens: apiResponse.usage?.completion_tokens || 0\n    }\n  }];\n} catch (err) {\n  console.error('[ParseError]', err.message);\n  return [{\n    json: {\n      review_id: originalReview?.review_id || 'PARSE-ERR',\n      product_name: originalReview?.product_name || 'Unknown',\n      source: originalReview?.source || 'unknown',\n      rating: originalReview?.rating || null,\n      review_text: originalReview?.review_text || '',\n      analysis_status: 'error',\n      error_message: err.message,\n      analyzed_at: new Date().toISOString()\n    }\n  }];\n}"
+      },
+      "id": "6335c581-eca6-4732-bd91-0bfc88f019c9",
+      "name": "🔬 Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2432,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enrich successful analyses with business metrics\nconst r = $input.first().json;\nif (r.analysis_status === 'error') return [{ json: r }];\n\nconst nps_category = r.rating >= 4.5 ? 'promoter' : r.rating >= 3.5 ? 'passive' : 'detractor';\nlet urgency_level;\nconst isNegative = r.sentiment === 'negative';\nconst isCriticalRating = r.rating <= 2;\nconst isHighPriority = r.priority === 'high';\nif ((isNegative && isCriticalRating) || (isHighPriority && isCriticalRating)) urgency_level = 'critical';\nelse if (isNegative || isHighPriority || isCriticalRating) urgency_level = 'urgent';\nelse if (r.priority === 'medium' || r.rating <= 3.5) urgency_level = 'monitor';\nelse urgency_level = 'positive';\n\nconst actions = [];\nif (['critical', 'urgent'].includes(urgency_level)) actions.push('📧 RESPOND: Use suggested_response within 24hrs');\nif (r.main_issue) actions.push('🔨 PRODUCT: Investigate — ' + r.main_issue);\nif (r.main_praise && r.rating >= 4) actions.push('📣 MARKETING: Highlight — ' + r.main_praise);\nif (r.product_insight) actions.push('💡 TEAM: ' + r.product_insight);\n\nconst alignment = (\n  (r.rating >= 4 && r.sentiment === 'positive') ||\n  (r.rating <= 2 && r.sentiment === 'negative') ||\n  (r.rating > 2 && r.rating < 4 && r.sentiment === 'neutral')\n) ? 'aligned' : 'misaligned';\n\nconst stars = '★'.repeat(Math.round(r.rating)) + '☆'.repeat(5 - Math.round(r.rating));\n\nreturn [{\n  json: {\n    ...r,\n    nps_category,\n    urgency_level,\n    requires_response: ['critical', 'urgent'].includes(urgency_level),\n    action_items: actions.join(' || '),\n    rating_vs_sentiment: alignment,\n    star_display: stars,\n    processing_complete: true\n  }\n}];"
+      },
+      "id": "0164462d-5ff7-4c52-bdc2-44306b1b6533",
+      "name": "📊 Enrich & Score Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2656,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO product_reviews (\n  review_id, source, product_name, rating, reviewer_name, review_date, review_text, ingested_at,\n  sentiment, sentiment_score, confidence, key_topics, main_praise, main_issue, ai_summary,\n  priority, priority_reason, suggested_response, product_insight, tags,\n  nps_category, urgency_level, requires_response, action_items, rating_vs_sentiment, star_display,\n  analysis_status, analyzed_at, model_used, input_tokens, output_tokens\n) VALUES (\n  '{{ $json.review_id }}', '{{ $json.source }}', '{{ $json.product_name }}', {{ $json.rating }}, '{{ $json.reviewer_name }}',\n  '{{ $json.review_date }}', '{{ $json.review_text }}', '{{ $json.ingested_at }}',\n  '{{ $json.sentiment }}', {{ $json.sentiment_score }}, {{ $json.confidence }}, '{{ $json.key_topics }}',\n  '{{ $json.main_praise }}', '{{ $json.main_issue }}', '{{ $json.ai_summary }}',\n  '{{ $json.priority }}', '{{ $json.priority_reason }}', '{{ $json.suggested_response }}',\n  '{{ $json.product_insight }}', '{{ $json.tags }}',\n  '{{ $json.nps_category }}', '{{ $json.urgency_level }}', {{ $json.requires_response }},\n  '{{ $json.action_items }}', '{{ $json.rating_vs_sentiment }}', '{{ $json.star_display }}',\n  '{{ $json.analysis_status }}', '{{ $json.analyzed_at }}', '{{ $json.model_used }}',\n  {{ $json.input_tokens }}, {{ $json.output_tokens }}\n) ON DUPLICATE KEY UPDATE\n  analyzed_at = VALUES(analyzed_at),\n  sentiment = VALUES(sentiment),\n  priority = VALUES(priority),\n  urgency_level = VALUES(urgency_level);\n",
+        "options": {}
+      },
+      "id": "2851c58f-0db7-48ab-9c2e-e258a54a5b70",
+      "name": "💾 Save to Database (MySQL)",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        1344
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "ZI9P10FeWDLTSIVG",
+          "name": "MySQL account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "🔐 Create a MySQL credential named 'MySQL Reviews DB' with your connection details.\nThe table 'product_reviews' must exist (run the CREATE TABLE script in MySQL Workbench)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all processed reviews into a comprehensive analytics report\nconst items = $input.all();\nconst allReviews = items.map(i => i.json);\nconst successful = allReviews.filter(r => r.analysis_status === 'success' && r.processing_complete);\nconst failed = allReviews.filter(r => r.analysis_status !== 'success');\nconst total = allReviews.length;\nconst n = successful.length;\n\nif (n === 0) {\n  return [{ json: { error: 'No reviews successfully analyzed', processing_summary: { total_received: total, successfully_analyzed: 0, failed: failed.length } } }];\n}\n\nconst avgRating = successful.reduce((s, r) => s + r.rating, 0) / n;\nconst avgSentimentScore = successful.reduce((s, r) => s + r.sentiment_score, 0) / n;\nconst totalTokens = successful.reduce((s, r) => s + (r.input_tokens || 0) + (r.output_tokens || 0), 0);\nconst sentimentCount = { positive: 0, neutral: 0, negative: 0 };\nconst urgencyCount = { critical: 0, urgent: 0, monitor: 0, positive: 0 };\nconst npsCount = { promoter: 0, passive: 0, detractor: 0 };\nconst priorityCount = { high: 0, medium: 0, low: 0 };\n\nsuccessful.forEach(r => {\n  sentimentCount[r.sentiment] = (sentimentCount[r.sentiment] || 0) + 1;\n  urgencyCount[r.urgency_level] = (urgencyCount[r.urgency_level] || 0) + 1;\n  npsCount[r.nps_category] = (npsCount[r.nps_category] || 0) + 1;\n  priorityCount[r.priority] = (priorityCount[r.priority] || 0) + 1;\n});\n\nconst npsScore = Math.round(((npsCount.promoter - npsCount.detractor) / n) * 100);\nconst sentimentHealthScore = Math.round(avgSentimentScore * 10);\n\nconst allTopics = successful.flatMap(r => r.key_topics ? r.key_topics.split(' | ').map(t => t.trim()) : []).filter(Boolean);\nconst topicFreq = {};\nallTopics.forEach(t => { topicFreq[t] = (topicFreq[t] || 0) + 1; });\nconst topTopics = Object.entries(topicFreq).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t, c]) => `${t} (${c}x)`);\n\nconst allTags = successful.flatMap(r => r.tags ? r.tags.split(' | ').map(t => t.trim()) : []).filter(Boolean);\nconst tagFreq = {};\nallTags.forEach(t => { tagFreq[t] = (tagFreq[t] || 0) + 1; });\nconst topTags = Object.entries(tagFreq).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, c]) => `${t}(${c})`);\n\nconst needResponse = successful.filter(r => r.requires_response);\nconst topIssues = successful.filter(r => r.main_issue).map(r => r.main_issue).slice(0, 3);\nconst topPraises = successful.filter(r => r.main_praise).map(r => r.main_praise).slice(0, 3);\nconst insights = successful.filter(r => r.product_insight).map(r => ({ product: r.product_name, insight: r.product_insight }));\n\nconst recommendations = [];\nif (avgRating < 3.5) recommendations.push('🔴 CRITICAL: Average rating below 3.5 — immediate product/service review required');\nif (sentimentCount.negative > n * 0.4) recommendations.push('🔴 CRITICAL: Over 40% negative sentiment — investigate root causes urgently');\nif (npsCount.detractor > n * 0.3) recommendations.push('🟡 WARNING: More than 30% detractors — customer retention programs needed');\nif (urgencyCount.critical > 0) recommendations.push(`🔴 ${urgencyCount.critical} CRITICAL review(s) — respond within 4 hours`);\nif (urgencyCount.urgent > 0) recommendations.push(`🟡 ${urgencyCount.urgent} URGENT review(s) — respond within 24 hours`);\nif (npsCount.promoter > n * 0.5) recommendations.push('🟢 OPPORTUNITY: Over 50% promoters — activate referral and testimonial programs');\nif (recommendations.length === 0) recommendations.push('✅ All metrics within healthy ranges — maintain current service quality');\n\nconst report = {\n  report_id: 'RPT-' + new Date().toISOString().replace(/[^0-9]/g, '').substring(0, 14),\n  generated_at: new Date().toISOString(),\n  period: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),\n  processing_summary: { total_received: total, successfully_analyzed: n, failed: failed.length, success_rate: Math.round((n / total) * 100) + '%', total_ai_tokens_used: totalTokens },\n  health_scores: { average_star_rating: Math.round(avgRating * 100) / 100, sentiment_health_score: sentimentHealthScore + '/100', nps_score: npsScore, response_required_count: needResponse.length },\n  breakdowns: { by_sentiment: sentimentCount, by_urgency: urgencyCount, by_nps: npsCount, by_ai_priority: priorityCount },\n  top_topics: topTopics.join(', '),\n  top_tags: topTags.join(', '),\n  top_issues_reported: topIssues,\n  top_praises_reported: topPraises,\n  recommendations,\n  product_insights: insights,\n  reviews_requiring_response: needResponse.map(r => ({ review_id: r.review_id, product: r.product_name, rating: r.rating, stars: r.star_display, urgency: r.urgency_level, sentiment: r.sentiment, issue: r.main_issue, suggested_response: r.suggested_response })),\n  all_reviews: successful.map(r => ({ review_id: r.review_id, product: r.product_name, rating: r.rating, stars: r.star_display, sentiment: r.sentiment, sentiment_score: r.sentiment_score, priority: r.priority, urgency: r.urgency_level, nps_category: r.nps_category, key_topics: r.key_topics, summary: r.ai_summary, requires_response: r.requires_response })),\n  failed_reviews: failed.map(r => ({ review_id: r.review_id, error: r.error_message }))\n};\n\nconsole.log('\\n' + '═'.repeat(60));\nconsole.log('📊 AI REVIEW ANALYSIS REPORT');\nconsole.log('═'.repeat(60));\nconsole.log(JSON.stringify(report, null, 2));\nconsole.log('═'.repeat(60) + '\\n');\n\nreturn [{ json: report }];"
+      },
+      "id": "11bceaf7-6fb7-4604-bfb8-747efd4058d7",
+      "name": "📈 Generate Summary Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3104,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Final output with downstream integration hooks\nconst report = $input.first().json;\nconsole.log('\\n🎉 Pipeline Complete!');\nconsole.log(`   📦 Total Reviews  : ${report.processing_summary?.total_received}`);\nconsole.log(`   ✅ Success Rate   : ${report.processing_summary?.success_rate}`);\nconsole.log(`   ⭐ Avg Rating     : ${report.health_scores?.average_star_rating}/5`);\nconsole.log(`   💯 NPS Score      : ${report.health_scores?.nps_score}`);\nconsole.log(`   🔔 Needs Response : ${report.health_scores?.response_required_count}`);\nconsole.log(`   🎫 AI Tokens Used : ${report.processing_summary?.total_ai_tokens_used}`);\nif (report.recommendations?.length > 0) {\n  console.log('\\n📋 Recommendations:');\n  report.recommendations.forEach(r => console.log('   ' + r));\n}\nreturn [{ json: { ...report, pipeline_status: 'completed', completed_at: new Date().toISOString() } }];"
+      },
+      "id": "bce9c015-0514-4759-bdad-875ee658ec4f",
+      "name": "📤 Final Output & Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3328,
+        1344
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "📝 On Form Submission": {
+      "main": [
+        [
+          {
+            "node": "🔄 Normalize Form Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Normalize Form Data": {
+      "main": [
+        [
+          {
+            "node": "✅ Validate & Sanitize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "▶️ Manual Test Trigger": {
+      "main": [
+        [
+          {
+            "node": "📋 Load Sample Reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Load Sample Reviews": {
+      "main": [
+        [
+          {
+            "node": "✅ Validate & Sanitize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Daily Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "🗄️ Fetch Latest Reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🗄️ Fetch Latest Reviews": {
+      "main": [
+        [
+          {
+            "node": "✅ Validate & Sanitize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Validate & Sanitize": {
+      "main": [
+        [
+          {
+            "node": "🤖 NVIDIA AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 NVIDIA AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "🔬 Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔬 Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "📊 Enrich & Score Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Enrich & Score Review": {
+      "main": [
+        [
+          {
+            "node": "💾 Save to Database (MySQL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Save to Database (MySQL)": {
+      "main": [
+        [
+          {
+            "node": "📈 Generate Summary Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📈 Generate Summary Report": {
+      "main": [
+        [
+          {
+            "node": "📤 Final Output & Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d20bab92-c90e-4395-91c0-ffb8ca3aba37",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cc3bc7ffb3bb34219b7170fd32df2da2fa6a23ccfe32dc38b8011f9ccf0a5a8c"
+  },
+  "id": "Id0nuCxK8gc4aoMi",
+  "tags": []
+}

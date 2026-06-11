@@ -1,0 +1,349 @@
+{
+  "name": "LINKEDIN POST+IMAGE GENRATER",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"meta/llama3-70b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a LinkedIn content expert. Write viral, engaging posts. First person. Short paragraphs. 3-5 emojis. End with question + 5 hashtags. No asterisks.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Create a LinkedIn post for: {{ $json.message.text }}\\n\\nUse the exact topic from the request. Write 300-400 words. Strong hook. Conversational tone. End with 'What's your take?' + 5 hashtags.\"\n    }\n  ],\n  \"temperature\": 0.8,\n  \"max_tokens\": 600\n}",
+        "options": {}
+      },
+      "id": "6682b56e-201c-4936-9630-240b19eca0ad",
+      "name": "NVIDIA — Generate Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -8656,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"meta/llama3-70b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a LinkedIn editor. Review the given post and improve it for clarity, engagement, and impact. Return ONLY the improved post text, nothing else. No explanations, no preamble.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": {{ JSON.stringify('Review and improve this LinkedIn post:\\n\\n' + $json.choices[0].message.content) }}\n    }\n  ],\n  \"temperature\": 0.4,\n  \"max_tokens\": 600\n}",
+        "options": {}
+      },
+      "id": "7e62eda9-fbf2-4909-9f73-d8fc9e61f6e0",
+      "name": "NVIDIA — Review & Improve Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -8432,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://flux-image-api.akash-image-api.workers.dev",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": {{ JSON.stringify('Create a professional LinkedIn featured image for: ' + $('Form Trigger').item.json['Topic'] + '. Target Audience: ' + $('Form Trigger').item.json['Target Audience'] + '. Style: ' + ($('Form Trigger').item.json['Image Style'] || 'professional corporate') + '. Tone: ' + $('Form Trigger').item.json['Tone'] + '. Create a visually stunning image with cinematic lighting and modern composition. No text overlays. Suitable for a LinkedIn banner.') }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "c1db8eb1-8a86-4612-a2fe-a4632fecb3ad",
+      "name": "FLUX — Generate Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -8208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from NVIDIA — Review & Improve Post\nconst postText = $('NVIDIA — Review & Improve Post').first().json.choices[0].message.content;\n\n// Get data from Form Trigger\nconst formData = $('Form Trigger').first().json;\n\n// Get FLUX API response\nconst apiResponse = $input.first().json;\n\n// Validate FLUX response\nif (!apiResponse.success) {\n  throw new Error('FLUX API Error: ' + JSON.stringify(apiResponse));\n}\n\nif (!apiResponse.image) {\n  throw new Error('No image in FLUX response');\n}\n\n// Decode base64 to binary\nconst imageBuffer = Buffer.from(apiResponse.image, 'base64');\n\nif (imageBuffer.length < 100000) {\n  throw new Error(`Image too small: ${imageBuffer.length} bytes`);\n}\n\nconsole.log(`✅ Image ready: ${(imageBuffer.length / 1024).toFixed(0)} KB`);\n\nreturn [{\n  json: {\n    post_text: postText,\n    topic: formData['Topic'] || '',\n    goal: formData['Post Goal'] || '',\n    audience: formData['Target Audience'] || '',\n    tone: formData['Tone'] || ''\n  },\n  binary: {\n    imageData: await this.helpers.prepareBinaryData(\n      imageBuffer,\n      'linkedin_image.png',\n      'image/png'\n    )\n  }\n}];"
+      },
+      "id": "43b82727-7d62-4184-9268-597eb64a0cc1",
+      "name": "Extract Post & Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -7984,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/assets?action=registerUpload",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linkedInOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"registerUploadRequest\": {\n    \"recipes\": [\"urn:li:digitalmediaRecipe:feedshare-image\"],\n    \"owner\": \"urn:li:member:ACoAADytrDYBT76xC0w-AlVgMsJkvxjt7QKKnRE\",\n    \"serviceRelationships\": [\n      {\n        \"relationshipType\": \"OWNER\",\n        \"identifier\": \"urn:li:userGeneratedContent\"\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "id": "575cbfcd-af27-45e7-b5a5-8c4d5fcd06fe",
+      "name": "LinkedIn — Register Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -7760,
+        0
+      ],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "Mgxwr2RFkxncY3Ne",
+          "name": "LinkedIn account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract upload URL and asset URN from LinkedIn response\nconst uploadResponse = $input.first().json;\n\nconst uploadUrl = uploadResponse.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;\nconst assetUrn = uploadResponse.value.asset;\n\nreturn {\n  uploadUrl: uploadUrl,\n  assetUrn: assetUrn\n};"
+      },
+      "id": "694f9b18-f4bf-4752-9082-fa739b91ac4f",
+      "name": "Extract Upload Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -7536,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Extract Upload Data').item.json.uploadUrl }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {}
+      },
+      "id": "974ccfce-eb68-4a56-92ea-dcc30b68df0a",
+      "name": "LinkedIn — Upload Binary Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -7312,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linkedInOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"author\": \"urn:li:member:ACoAADytrDYBT76xC0w-AlVgMsJkvxjt7QKKnRE\",\n  \"lifecycleState\": \"PUBLISHED\",\n  \"specificContent\": {\n    \"com.linkedin.ugc.ShareContent\": {\n      \"shareCommentary\": {\n        \"text\": {{ JSON.stringify($('Extract Post & Image').item.json.post_text) }}\n      },\n      \"shareMediaCategory\": \"IMAGE\",\n      \"media\": [\n        {\n          \"status\": \"READY\",\n          \"description\": {\n            \"text\": \"Image generated by FLUX AI\"\n          },\n          \"media\": {{ JSON.stringify($('Extract Upload Data').item.json.assetUrn) }},\n          \"title\": {\n            \"text\": \"LinkedIn Image\"\n          }\n        }\n      ]\n    }\n  },\n  \"visibility\": {\n    \"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\"\n  }\n}",
+        "options": {}
+      },
+      "id": "947013de-c06f-4e92-879b-1410f35ee7fb",
+      "name": "LinkedIn — Create Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -7088,
+        0
+      ],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "Mgxwr2RFkxncY3Ne",
+          "name": "LinkedIn account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -8880,
+        0
+      ],
+      "id": "16d67cac-de7b-4ef0-93e7-16ee1da6bce1",
+      "name": "Telegram Trigger2",
+      "webhookId": "4cf5fe88-baed-4cba-8bbb-f6c4bace7bde",
+      "credentials": {
+        "telegramApi": {
+          "id": "OUOyqXcSHViSzmaS",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "NVIDIA — Generate Post": {
+      "main": [
+        [
+          {
+            "node": "NVIDIA — Review & Improve Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NVIDIA — Review & Improve Post": {
+      "main": [
+        [
+          {
+            "node": "FLUX — Generate Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FLUX — Generate Image": {
+      "main": [
+        [
+          {
+            "node": "Extract Post & Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Post & Image": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn — Register Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn — Register Upload": {
+      "main": [
+        [
+          {
+            "node": "Extract Upload Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Upload Data": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn — Upload Binary Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn — Upload Binary Image": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn — Create Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger2": {
+      "main": [
+        [
+          {
+            "node": "NVIDIA — Generate Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0c245301-ff5b-4efb-b494-6d041c79b98c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cc3bc7ffb3bb34219b7170fd32df2da2fa6a23ccfe32dc38b8011f9ccf0a5a8c"
+  },
+  "id": "VyYVxfnJouenhkmC",
+  "tags": []
+}

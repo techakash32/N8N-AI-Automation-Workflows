@@ -1,0 +1,383 @@
+{
+  "name": "Appointment Booking AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -176,
+        -32
+      ],
+      "id": "8f06d9c1-bbb3-4ef3-915a-923353fefaee",
+      "name": "When chat message received",
+      "webhookId": "46ea0fc1-9d73-4c5a-9aa6-cd5871878dd6"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=You will be given a time and may be asked to:\n- Check availability\n- Create a booking\n- Retrieve upcoming booking information\n- Cancel an existing booking\n- Reschedule an existing booking\n\nFollow these instructions exactly:\n\n- If the user does NOT mention any time, date, booking, availability, appointment, or scheduling intent:\n  DO NOT call any tools. Simply ask: \"Hello! How can I help you with bookings today?\"---\n\n## 1. Checking Availability:\n- Use the 'check availability tool' to verify the requested time slot.\n- This is the current date and time in India (IST) for your understanding:  \n  {{ DateTime.now().setZone('Asia/Kolkata').toISO() }}\n\n- You **must resolve any relative date expressions** like \"tomorrow\", \"next Friday\", or \"this weekend\" by referencing the current date above.\n- Convert **all interpreted dates** into strict ISO 8601 format:  \n  `YYYY-MM-DDTHH:MM:SS+05:30`, where the offset is always `+05:30` for India Standard Time (IST).\n\n- Once tool output is returned:\n  - If the requested time is available: confirm that it is available and ask if you can proceed with the booking for that specific time.\n  - If not: immediately inform the user that the requested time is unavailable, and suggest nearby alternatives which is less than 3. Make sure they are nearby the user requested time and less than 3, do not return all available slots.\n    - Never return blank output.\n    - If the entire day is unavailable: check the same time on the next day and return those options.\n  - Once the user confirms an acceptable time, proceed to booking in the next step.\n\n---\n\n## 2. Creating a Booking:\n- Only proceed with creating a booking if the requested time has been confirmed available.\n- Use the 'create booking tool' to schedule the appointment at that time.\n- Confirm the successful creation of the booking to the user.\n- Never create a booking for a time that was not explicitly confirmed as available.\n\n---\n\n## 3. Retrieving Existing Booking Info:\n- Use the 'get booking information' tool when the user asks about existing or upcoming bookings.\n- If there are no upcoming bookings: clearly inform the user.\n- If there is **one upcoming booking**: store the UID for use in cancellation or rescheduling if needed.\n- If there are **multiple upcoming bookings**: list them all (including time and title/description), and ask the user to specify which one they want to act on.\n\n---\n\n## 4. Cancelling a Booking:\n- Before canceling, ensure you have the **UID** of the specific booking from the previous step.\n- If only one upcoming booking exists: use the 'cancel booking tool' immediately — no need to ask the user.\n- If multiple bookings exist:\n  - Ask the user and wait for them to specify which one to cancel based on the list shown.\n  - Provide a list including the datetime of each booking.\n- Once canceled: confirm the cancellation to the user.\n- Do not cancel the booking without the user giving their email and you getting the uid from 'Get booking information'.\n\n---\n\n## 5. Rescheduling a Booking:\n- Before rescheduling, ensure you have the **UID** of the existing booking from the previous step.\n- Ask the user for the new desired date and time.\n- Resolve natural date expressions as in Step 1 and format the date strictly as `YYYY-MM-DDTHH:MM:SS+05:30`.\n\n- Use the 'check availability tool' to verify if the new time is available.\n  - If available: use the 'reschedule booking' tool with the UID and the new time.\n  - If not: suggest alternative nearby slots, following the same logic as in Step 1.\n- Once rescheduled: confirm success to the user, including the updated date and time.\n\n---\n\n## General Instructions:\n- Be clear, concise, and confirm every step and result.\n- Resolve all user-specified time references (e.g. \"tomorrow\", \"next Monday\") using the current date in IST (Asia/Kolkata) timezone.\n- Format all time parameters exactly as:  \n  `YYYY-MM-DDTHH:MM:SS+05:30`  \n  This format is required by **all tools** and must always use `+05:30` as the UTC offset (India does not observe daylight saving time).\n- Do **not** proceed with any action unless preconditions are met (e.g., don't cancel or reschedule without a UID, don't book unavailable times)."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        256,
+        -32
+      ],
+      "id": "90fa4beb-e36b-47c4-91fd-c117bf7ec629",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        32,
+        272
+      ],
+      "id": "63b00517-c05a-44dc-9b35-a647620a4aca",
+      "name": "Window Buffer Memory"
+    },
+    {
+      "parameters": {
+        "toolDescription": "=Retrieves appointment availability for a full workday window on the calendar.\n\nUse `timeMin` and `timeMax` to define the range:\n- `timeMin`: Always set to 09:00 local time\n- `timeMax`: Always set to 17:00 local time\n\nFor example, to check availability for April 25, 2025:\n- `timeMin`: 2025-04-25T09:00:00+10:00\n- `timeMax`: 2025-04-25T17:00:00+10:00\n\nTime values must always use the format `YYYY-MM-DDTHH:MM:SS±HH:MM`, where the offset is either `+10:00` or `+11:00` depending on daylight saving time in Sydney, Australia.\n\nAvailability will be returned as \"Free\" or \"Busy\".\n",
+        "url": "https://api.cal.com/v1/slots",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "apiKey",
+              "valueProvider": "fieldValue",
+              "value": "cal_live_8ce10769f5ecb359d11df97d7206ccb2"
+            },
+            {
+              "name": "startTime",
+              "valueProvider": "fieldValue",
+              "value": "{timeMin}"
+            },
+            {
+              "name": "endTime",
+              "valueProvider": "fieldValue",
+              "value": "{timeMax}"
+            },
+            {
+              "name": "eventTypeId",
+              "valueProvider": "fieldValue",
+              "value": "837575"
+            },
+            {
+              "name": "timeZone",
+              "valueProvider": "fieldValue",
+              "value": "Australia/Sydney"
+            }
+          ]
+        },
+        "optimizeResponse": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        272
+      ],
+      "id": "17311e09-e84d-4982-aaba-816dc0f2599c",
+      "name": "check availablity"
+    },
+    {
+      "parameters": {
+        "toolDescription": "=This module is used for booking appointment after the user has agreed to a specific time.\n\nUse these parameters to proceed with the booking :\n{eventdatetime} - which is the agreed time to book, use the utc time formatting of YYYY-MM-DDTHH:MM:SS±HH:MM, It should have +10 or +11 only based on whether its standard or daylight right now \n\n{email}- this is the email of the user\n{name}- The full name of the user\n{description}- The descpription of the meeting\n{Title}- The title of the meeting",
+        "method": "POST",
+        "url": "=https://api.cal.com/v2/bookings",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "Bearer cal_live_e7341cbb3e2b34180459eca1befb6850"
+            },
+            {
+              "name": "cal-api-version",
+              "valueProvider": "fieldValue",
+              "value": "=2024-08-13"
+            },
+            {
+              "name": "Content-Type",
+              "valueProvider": "fieldValue",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"attendee\": {\n        \"language\": \"en\",\n        \"name\": \"{name}\",\n        \"timeZone\": \"Australia/Sydney\",\n        \"email\": \"{email}\"\n    },\n    \"eventTypeId\": 837575,\n    \"start\": \"{eventdatetime}\",\n    \"bookingFieldsResponses\": {\n        \"description\": \"{description}\",\n        \"title\": \"{title}\"\n    }\n}",
+        "optimizeResponse": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        384,
+        272
+      ],
+      "id": "84d68497-0727-484b-9bb0-751e55882c53",
+      "name": "Book Appointment"
+    },
+    {
+      "parameters": {
+        "toolDescription": "This tool is used to retrive the information of an exisitng meeting that is already scheduled, this is used to ge the uid of the exisitng meeting so that we can either cancel to reschdule the metting based on the user's request.",
+        "url": "https://api.cal.com/v2/bookings",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "eventTypeId",
+              "valueProvider": "fieldValue",
+              "value": "837575"
+            },
+            {
+              "name": "=attendeeEmail",
+              "valueProvider": "=fieldValue",
+              "value": "={beastboy21718@gmail.com}"
+            },
+            {
+              "name": "status",
+              "valueProvider": "fieldValue",
+              "value": "upcoming"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "Bearer cal_live_d2fcf41e25c88d515d6bf628632aff14"
+            },
+            {
+              "name": "cal-api-version",
+              "valueProvider": "fieldValue",
+              "value": "2024-08-13"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        272
+      ],
+      "id": "71346222-e76a-4b2c-a634-e15ddf4e8fc5",
+      "name": "Get booking information"
+    },
+    {
+      "parameters": {
+        "toolDescription": "=This tool is used to cancel a meeting, its called after getting the 'uid' value from the 'Get booking information tool' , cause without the uid value , we cannot cancel a booking.\n\nFill the reason for booking based on what the user tells, if the user did not mention any specific reason, just fill it as 'User requseted cancellation'",
+        "method": "POST",
+        "url": "=https://api.cal.com/v2/bookings/{uid}/cancel",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "Bearer cal_live_e7341cbb3e2b34180459eca1befb6850"
+            },
+            {
+              "name": "cal-api-version",
+              "valueProvider": "fieldValue",
+              "value": "2024-08-13"
+            }
+          ]
+        },
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            {
+              "name": "cancellationReason",
+              "valueProvider": "modelOptional"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        272
+      ],
+      "id": "3815b147-0ea6-42be-b8ab-97711dd345b9",
+      "name": "Cancel booking"
+    },
+    {
+      "parameters": {
+        "toolDescription": "=This tool is used to reschedule a meeting, its called after getting the 'uid' value from the 'Get booking information tool' , cause without the uid value , we cannot reschedule a booking.\n\nFill the reason for booking based on what the user tells, if the user did not mention any specific reason, just fill it as 'User requseted cancellation'\n\nThis is the placeholder {newDateTime} for the newly requested date and time .Make sure it is in right formatting and offset in the utc as per YYYY-MM-DDTHH:MM:SS±HH:MM`, where the offset is either `+10:00` or `+11:00` depending on daylight saving time in Sydney, Australia.\n\nIf the rescedule has 400 error, its most probably you did you use the right utc format as described.",
+        "method": "POST",
+        "url": "=https://api.cal.com/v2/bookings/{uid}/reschedule",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Authorization",
+              "valueProvider": "fieldValue",
+              "value": "Bearer cal_live_e7341cbb3e2b34180459eca1befb6850"
+            },
+            {
+              "name": "cal-api-version",
+              "valueProvider": "fieldValue",
+              "value": "2024-08-13"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"start\": \"{newDateTime}\" }",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "{newDateTime}",
+              "description": "This is the new time that the user wants to reschedule an exisitng meetingto, it is in the format of YYYY-MM-DDTHH:MM:SS±HH:MM, use this exact format for the date and time the user has given to proceed with the resceduling."
+            }
+          ]
+        },
+        "optimizeResponse": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        928,
+        272
+      ],
+      "id": "99373953-6db5-4d89-8c37-1a2a472f2d09",
+      "name": "Reschdule Booking"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        144
+      ],
+      "id": "d770213d-288a-4cec-88cf-628e0d02f83e",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "KiZW179rX2AWXs1v",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check availablity": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Book Appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get booking information": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancel booking": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reschdule Booking": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "dc26ee7c-d794-4b01-b9f5-8a32020ff0f0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cc3bc7ffb3bb34219b7170fd32df2da2fa6a23ccfe32dc38b8011f9ccf0a5a8c"
+  },
+  "id": "ilkJq6CMDlJnIhvA",
+  "tags": []
+}
